@@ -1,0 +1,28 @@
+zk:
+  image: wurstmeister/zookeeper
+  environment:
+    - SERVICE_NAME=zk
+  ports: 
+    - 2181:2181
+
+kafka:
+  image: wurstmeister/kafka:0.8.1.1-1
+  ports:
+    - 9092:9092
+  environment:
+    - SERVICE_NAME=kafka
+    - KAFKA_ADVERTISED_HOST_NAME=kafka
+    - KAFKA_CREATE_TOPICS=log:20:1
+  links:
+    - zk:zk
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+
+logstash:
+  image: logstash
+  links:
+    - zk:zk
+    - kafka:kafka
+  environment:
+    - SERVICE_NAME=logstash
+  command: -e 'input { kafka { zk_connect => "zk:2181" topic_id => "log" } } output { elasticsearch { bind_host => "192.168.99.100" port => "9200" protocol => "http" } }'
